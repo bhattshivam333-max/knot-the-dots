@@ -1,4 +1,4 @@
-# Dot Knot — Line & Color Puzzle
+# Knot the Dots — Line & Color Puzzle
 
 A mobile puzzle game built with Godot 4.6, inspired by *Dot Knot / Flow*-style
 connect-the-dots puzzles.

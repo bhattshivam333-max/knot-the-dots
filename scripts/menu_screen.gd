@@ -16,7 +16,7 @@ func _ready() -> void:
 	box.custom_minimum_size = Vector2(420, 0)
 	center.add_child(box)
 
-	var title := UI.label("DOT KNOT", 78, UI.TEXT)
+	var title := UI.label("KNOT THE DOTS", 58, UI.TEXT)
 	box.add_child(title)
 
 	var decor := KnotDecor.new()
