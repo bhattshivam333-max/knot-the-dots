@@ -21,6 +21,14 @@ func _check(cond: bool, what: String) -> void:
 		print("  FAIL - " + what)
 
 
+func _draw_solution(board: Board, c: int) -> void:
+	var sol: Array = board.solution[c]
+	board._press(sol[0])
+	for k in range(1, sol.size()):
+		board._drag_to(sol[k])
+	board._release()
+
+
 func _run() -> void:
 	var main: Control = load("res://main.tscn").instantiate()
 	get_tree().root.add_child.call_deferred(main)
@@ -41,31 +49,33 @@ func _run() -> void:
 	var gs: GameScreen = main.current
 	var board: Board = gs.board
 	_check(board.solution.size() >= 3, "level has flows")
+	_check(gs.time_left > 0.0, "timer is running")
 
+	var coins_before: int = Progress.coins()
 	for c in board.solution.size():
-		var sol: Array = board.solution[c]
-		board._press(sol[0])
-		for k in range(1, sol.size()):
-			board._drag_to(sol[k])
-		board._release()
+		_draw_solution(board, c)
 	_check(board.done_count() == board.solution.size(), "all pairs connected")
 	_check(board.coverage() == 1.0, "board fully covered")
 	_check(board.locked, "win detected")
-	_check(board.moves == board.solution.size(), "perfect move count")
-	_check(board.stars_earned() == 3, "3 stars")
+	_check(gs._stars_for_time() == 3, "fast solve earns 3 stars")
 	await get_tree().create_timer(0.8).timeout
-	_check(is_instance_valid(gs._win_layer), "win overlay appears")
+	_check(is_instance_valid(gs._overlay), "win overlay appears")
+	_check(Progress.coins() > coins_before, "win pays coins")
 
-	print("cutting: drawing across another line severs it")
+	print("undo restores the previous state")
 	main.show_game(0, 1)
 	await get_tree().process_frame
 	gs = main.current
 	board = gs.board
+	_draw_solution(board, 0)
+	_check(board.paths[0].size() > 1, "path drawn")
+	_check(board.can_undo(), "undo available")
+	board.undo()
+	_check(board.paths[0].is_empty(), "undo cleared the drawn path")
+
+	print("cutting: drawing across another line severs it")
 	var sol0: Array = board.solution[0]
-	board._press(sol0[0])
-	for k in range(1, sol0.size()):
-		board._drag_to(sol0[k])
-	board._release()
+	_draw_solution(board, 0)
 	var len_before: int = board.paths[0].size()
 	# Find a non-dot cell of line 0 with a neighbor belonging to another
 	# color's solution, then walk that color up to it and step across.
@@ -101,7 +111,31 @@ func _run() -> void:
 	for i in board.solution.size():
 		board.apply_hint()
 	_check(board.locked, "hints finish the level")
-	_check(board.stars_earned() == 1, "hint caps stars at 1")
+
+	print("hint button spends coins")
+	main.show_game(0, 2)
+	await get_tree().process_frame
+	gs = main.current
+	board = gs.board
+	coins_before = Progress.coins()
+	gs._on_hint()
+	_check(Progress.coins() == coins_before - GameScreen.HINT_COST, "hint costs coins")
+	_check(board.done_count() == 1, "hint drew one flow")
+
+	print("pause freezes the board")
+	gs._on_pause()
+	_check(board.frozen, "board frozen while paused")
+	_check(is_instance_valid(gs._overlay), "pause overlay appears")
+
+	print("time up shows lose overlay")
+	main.show_game(0, 3)
+	await get_tree().process_frame
+	gs = main.current
+	gs.time_left = 0.01
+	await get_tree().create_timer(0.2).timeout
+	_check(gs.ended, "time up ends the level")
+	_check(gs.board.frozen, "board frozen after time up")
+	_check(is_instance_valid(gs._overlay), "lose overlay appears")
 
 	print("bridge pack level solves the same way")
 	main.show_game(5, 0)
@@ -110,11 +144,7 @@ func _run() -> void:
 	board = gs.board
 	_check(not board.bridge_cells.is_empty(), "bridge level has bridges")
 	for c in board.solution.size():
-		var sol: Array = board.solution[c]
-		board._press(sol[0])
-		for k in range(1, sol.size()):
-			board._drag_to(sol[k])
-		board._release()
+		_draw_solution(board, c)
 	_check(board.locked, "bridge level won")
 
 	print("daily puzzle screen")

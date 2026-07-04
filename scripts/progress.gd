@@ -47,6 +47,30 @@ func next_unfinished() -> Dictionary:
 	return {}
 
 
+func total_completed() -> int:
+	var c := 0
+	for pi in Levels.PACKS.size():
+		c += completed_count(pi)
+	return c
+
+
+func coins() -> int:
+	return int(cfg.get_value("wallet", "coins", 30))
+
+
+func add_coins(n: int) -> void:
+	cfg.set_value("wallet", "coins", coins() + n)
+	cfg.save(SAVE_PATH)
+
+
+func spend_coins(n: int) -> bool:
+	if coins() < n:
+		return false
+	cfg.set_value("wallet", "coins", coins() - n)
+	cfg.save(SAVE_PATH)
+	return true
+
+
 func get_setting(key: String, def: Variant) -> Variant:
 	return cfg.get_value("settings", key, def)
 

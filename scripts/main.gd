@@ -6,6 +6,20 @@ var current: Control = null
 
 
 func _ready() -> void:
+	var grad := Gradient.new()
+	grad.colors = PackedColorArray([UI.BG_TOP, UI.BG_MID, UI.BG_BOT])
+	grad.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill_from = Vector2(0.15, 0.0)
+	tex.fill_to = Vector2(0.85, 1.0)
+	var bg_rect := TextureRect.new()
+	bg_rect.texture = tex
+	bg_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	bg_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg_rect)
+
 	var bg := BgFx.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)

@@ -23,6 +23,7 @@ var z_order: Array = []       # draw order, most recently touched last
 var moves := 0
 var hint_used := false
 var locked := false
+var frozen := false           # paused: input ignored but state kept
 
 var show_letters := false
 
@@ -31,6 +32,8 @@ var _press_color := -1
 var _touch_index := -1
 var _snapshot: Array = []
 var _last_move_color := -1
+var _history: Array = []      # undo stack of {paths, completed}
+var _history_pending := false
 
 var _pulse_t := 0.0
 var _flash := {}              # color -> remaining flash time
@@ -43,9 +46,11 @@ var _sb_cell := StyleBoxFlat.new()
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	_sb_bg.bg_color = Color("#1b2233")
-	_sb_bg.set_corner_radius_all(18)
-	_sb_cell.set_corner_radius_all(8)
+	_sb_bg.bg_color = UI.BOARD_BG
+	_sb_bg.set_corner_radius_all(20)
+	_sb_cell.set_corner_radius_all(10)
+	_sb_cell.set_border_width_all(1)
+	_sb_cell.border_color = Color(1, 1, 1, 0.06)
 	resized.connect(queue_redraw)
 	set_process(false)
 
@@ -80,10 +85,38 @@ func restart() -> void:
 	_last_move_color = -1
 	hint_used = false
 	locked = false
+	frozen = false
+	_history = []
+	_history_pending = false
 	_flash = {}
 	set_process(false)
 	queue_redraw()
 	state_changed.emit()
+
+
+func can_undo() -> bool:
+	return not _history.is_empty() and not locked
+
+
+func undo() -> void:
+	if locked or frozen or _history.is_empty():
+		return
+	var h: Dictionary = _history.pop_back()
+	paths = h["paths"]
+	completed = h["completed"]
+	active = -1
+	_press_color = -1
+	_touch_index = -1
+	_rebuild_occ()
+	queue_redraw()
+	state_changed.emit()
+
+
+func _push_history() -> void:
+	_history.append({"paths": _make_snapshot(), "completed": completed.duplicate()})
+	if _history.size() > 60:
+		_history.pop_front()
+	_history_pending = true
 
 
 func done_count() -> int:
@@ -96,16 +129,6 @@ func done_count() -> int:
 
 func coverage() -> float:
 	return float(occ.size()) / float(grid_n * grid_n)
-
-
-func stars_earned() -> int:
-	if hint_used:
-		return 1
-	if moves <= solution.size():
-		return 3
-	if moves <= solution.size() + 3:
-		return 2
-	return 1
 
 
 ## Fill in the solution for one unfinished color, cutting anything in the way.
@@ -126,6 +149,8 @@ func apply_hint() -> void:
 	if target == -1:
 		return
 	hint_used = true
+	_push_history()
+	_history_pending = false
 	var sol: Array = solution[target].duplicate()
 	for k in sol.size():
 		var cell: Vector2i = sol[k]
@@ -162,7 +187,7 @@ func _matches_solution(c: int) -> bool:
 # ------------------------------------------------------------------ input
 
 func _gui_input(event: InputEvent) -> void:
-	if locked:
+	if locked or frozen:
 		return
 	if event is InputEventScreenTouch:
 		_recalc_geometry()
@@ -182,6 +207,7 @@ func _press(cell: Vector2i) -> void:
 	if cell.x < 0:
 		return
 	_snapshot = _make_snapshot()
+	_push_history()
 	var c := -1
 	if dots.has(cell):
 		c = dots[cell]
@@ -200,6 +226,8 @@ func _press(cell: Vector2i) -> void:
 		paths[c].resize(i + 1)
 		completed[c] = false
 	if c == -1:
+		_history.pop_back()
+		_history_pending = false
 		return
 	active = c
 	_press_color = c
@@ -251,7 +279,12 @@ func _commit_move() -> void:
 			moves += 1
 			_last_move_color = _press_color
 		_snapshot = _make_snapshot()
+		_history_pending = false
 		state_changed.emit()
+	elif _history_pending:
+		# Touch that changed nothing: drop its undo entry.
+		_history.pop_back()
+		_history_pending = false
 
 
 func _try_step(c: int, next: Vector2i) -> bool:
@@ -406,19 +439,22 @@ func _draw() -> void:
 	var side := _cell_px * grid_n
 	draw_style_box(_sb_bg, Rect2(_origin, Vector2(side, side)))
 
-	var grid_col := Color(1, 1, 1, 0.05)
-	for i in range(1, grid_n):
-		var o := _origin + Vector2(i * _cell_px, 0)
-		draw_line(o, o + Vector2(0, side), grid_col, 1.5)
-		o = _origin + Vector2(0, i * _cell_px)
-		draw_line(o, o + Vector2(side, 0), grid_col, 1.5)
+	# Checkerboard cells.
+	for y in grid_n:
+		for x in grid_n:
+			_sb_cell.bg_color = Color(1, 1, 1, 0.05 if (x + y) % 2 == 0 else 0.025)
+			draw_style_box(_sb_cell, Rect2(
+				_origin + Vector2(x, y) * _cell_px + Vector2(1.5, 1.5),
+				Vector2(_cell_px - 3.0, _cell_px - 3.0)))
 
 	# Soft tint on covered cells.
 	var pad := _cell_px * 0.06
+	var sb_tint := StyleBoxFlat.new()
+	sb_tint.set_corner_radius_all(10)
 	for cell in occ:
 		var col: Color = Levels.PALETTE[occ[cell][0]]
-		_sb_cell.bg_color = Color(col, 0.12)
-		draw_style_box(_sb_cell, Rect2(
+		sb_tint.bg_color = Color(col, 0.1)
+		draw_style_box(sb_tint, Rect2(
 			_origin + Vector2(cell) * _cell_px + Vector2(pad, pad),
 			Vector2(_cell_px - pad * 2.0, _cell_px - pad * 2.0)))
 
@@ -446,20 +482,23 @@ func _draw() -> void:
 	for cell in bridge_cells:
 		draw_arc(_center(cell), _cell_px * 0.43, 0.0, TAU, 40, Color(1, 1, 1, 0.4), 2.5, true)
 
-	# Dots.
-	var font := ThemeDB.fallback_font
+	# Dots, glossy per the design mockup.
+	var font := UI.fredoka(650)
 	for cell in dots:
 		var c: int = dots[cell]
 		var col: Color = Levels.PALETTE[c]
 		var ctr := _center(cell)
-		var r := _cell_px * 0.3
+		var r := _cell_px * 0.34
 		if c == active:
-			r *= 1.0 + 0.08 * sin(_pulse_t * 8.0)
+			r *= 1.0 + 0.07 * sin(_pulse_t * 8.0)
 		if _flash.has(c):
-			r *= 1.0 + 0.22 * _flash[c]
-		if completed[c]:
-			draw_arc(ctr, r + _cell_px * 0.08, 0.0, TAU, 40, Color(col, 0.55), 3.0, true)
+			r *= 1.0 + 0.2 * _flash[c]
+		draw_circle(ctr + Vector2(0, r * 0.12), r, Color(0, 0, 0, 0.35), true, -1.0, true)
 		draw_circle(ctr, r, col, true, -1.0, true)
+		draw_circle(ctr + Vector2(-r * 0.28, -r * 0.34), r * 0.38,
+				Color(1, 1, 1, 0.32), true, -1.0, true)
+		if completed[c]:
+			draw_arc(ctr, r + _cell_px * 0.075, 0.0, TAU, 40, Color(1, 1, 1, 0.35), 4.0, true)
 		if show_letters:
 			var fs := int(_cell_px * 0.3)
 			draw_string(font, ctr + Vector2(-r, fs * 0.36), char(65 + c),

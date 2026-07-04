@@ -1,40 +1,41 @@
 class_name BgFx
 extends Control
-## Slow-drifting translucent dots behind every screen.
+## Soft floating color orbs behind every screen, per the KNOTS design.
 
 var _dots: Array = []
+var _t := 0.0
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	for i in 18:
+	var picks := [Color("#ff5c72"), Color("#37e08c"), Color("#5ec8ff"),
+			Color("#ffcc33"), Color("#b775f5")]
+	for i in 9:
 		_dots.append({
-			"pos": Vector2(rng.randf() * 720.0, rng.randf() * 1280.0),
-			"vel": Vector2(rng.randf_range(-12, 12), rng.randf_range(-12, 12)),
-			"r": rng.randf_range(14, 60),
-			"col": Color(Levels.PALETTE[rng.randi_range(0, Levels.PALETTE.size() - 1)], 0.05),
+			"base": Vector2(rng.randf() * 720.0, rng.randf() * 1280.0),
+			"r": rng.randf_range(16, 34),
+			"amp": rng.randf_range(8, 18),
+			"speed": rng.randf_range(0.5, 1.1),
+			"phase": rng.randf() * TAU,
+			"col": picks[i % picks.size()],
 		})
 
 
 func _process(delta: float) -> void:
-	for d in _dots:
-		d["pos"] += d["vel"] * delta
-		var p: Vector2 = d["pos"]
-		var r: float = d["r"]
-		if p.x < -r:
-			p.x = size.x + r
-		if p.x > size.x + r:
-			p.x = -r
-		if p.y < -r:
-			p.y = size.y + r
-		if p.y > size.y + r:
-			p.y = -r
-		d["pos"] = p
+	_t += delta
 	queue_redraw()
 
 
 func _draw() -> void:
 	for d in _dots:
-		draw_circle(d["pos"], d["r"], d["col"], true, -1.0, true)
+		var p: Vector2 = d["base"] + Vector2(
+			sin(_t * d["speed"] * 0.6 + d["phase"]) * d["amp"] * 0.6,
+			sin(_t * d["speed"] + d["phase"]) * d["amp"])
+		var r: float = d["r"]
+		var col: Color = d["col"]
+		# Layered circles fake the blurred glow from the mockup.
+		draw_circle(p, r * 1.5, Color(col, 0.04), true, -1.0, true)
+		draw_circle(p, r * 1.15, Color(col, 0.06), true, -1.0, true)
+		draw_circle(p, r, Color(col, 0.12), true, -1.0, true)

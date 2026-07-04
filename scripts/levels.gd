@@ -2,15 +2,15 @@ class_name Levels
 ## Level pack definitions and the shared color palette.
 
 const PALETTE: Array[Color] = [
-	Color("#ff4d57"), # red
-	Color("#31d287"), # green
-	Color("#3f8cff"), # blue
-	Color("#ffd93d"), # yellow
+	Color("#ff5c72"), # red
+	Color("#37e08c"), # green
+	Color("#ffcc33"), # yellow
+	Color("#b775f5"), # purple
+	Color("#5ec8ff"), # blue
 	Color("#ff8b3d"), # orange
 	Color("#2fd6e8"), # cyan
 	Color("#e05bff"), # magenta
 	Color("#a4e846"), # lime
-	Color("#8b5bff"), # purple
 	Color("#ff5bb0"), # pink
 	Color("#c9a06a"), # tan
 	Color("#7ef0c9"), # mint
@@ -19,6 +19,15 @@ const PALETTE: Array[Color] = [
 	Color("#b03a48"), # maroon
 	Color("#0aa574"), # teal
 ]
+
+const TIME_LIMITS := {5: 45, 6: 70, 7: 100, 8: 135, 9: 175}
+
+
+static func time_limit(n: int, with_bridges: bool) -> int:
+	var t: int = TIME_LIMITS.get(n, 45 + (n - 5) * 32)
+	if with_bridges:
+		t = int(t * 1.25)
+	return t
 
 const PACKS := [
 	{"name": "Beginner", "size": 5, "count": 40, "seed": 1000, "bridges": false},

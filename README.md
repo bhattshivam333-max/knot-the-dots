@@ -7,6 +7,10 @@ connect-the-dots puzzles.
 cross — drawing over another line cuts it. The level is solved when **all pairs
 are connected and every cell of the board is filled**.
 
+The UI implements the **"Knots UI" Claude Design mockup**: Fredoka/Nunito
+typography, purple gradient background with floating orbs, chunky gold 3D
+buttons, glossy dots on a checkerboard board, and pop/confetti animations.
+
 ## Features
 
 - **240 levels** in 6 packs: Beginner 5×5, Classic 6×6, Advanced 7×7,
@@ -15,12 +19,18 @@ are connected and every cell of the board is filled**.
 - **Daily puzzle** — a new date-seeded puzzle every day (Sundays have bridges).
 - **Procedural generator** — every level is guaranteed solvable by
   construction and is identical for everyone (deterministic seeds).
-- **Hints** (auto-draws one flow, caps the score at 1 star), move counting,
-  1–3 star scoring, pipe-fill %, per-level progress saved on device.
-- Pack unlocking (solve 5 levels of a pack to open the next), level unlocking.
-- Touch-first UI, portrait, glowing line rendering, synthesized sound effects,
-  optional **letter labels on dots** for color-blind players.
+- **Coin economy** — wins pay 20 + 10×stars coins; hints cost 15 coins and
+  auto-draw one flow.
+- **Level timer** — size-based time limit, 1–3 stars by remaining time,
+  TIME'S UP retry screen, pause menu (resume / restart / sound / music).
+- **Undo**, zig-zag level path with locked/current/done nodes, pack unlocking
+  (solve 5 levels of a pack to open the next), progress saved on device.
+- Touch-first UI, portrait, glowing line rendering, synthesized sound effects
+  and looping ambient music, optional **letter labels on dots** for
+  color-blind players.
 - Android back-button navigation.
+
+Fonts: Fredoka & Nunito (SIL Open Font License, see `assets/fonts/OFL.txt`).
 
 ## Run it
 
