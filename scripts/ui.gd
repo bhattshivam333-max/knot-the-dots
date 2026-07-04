@@ -63,7 +63,8 @@ static func _font(family: String, weight: int, spacing: int) -> Font:
 		_nunito_file = load("res://assets/fonts/Nunito.ttf")
 	var fv := FontVariation.new()
 	fv.base_font = _fredoka_file if family == "fredoka" else _nunito_file
-	fv.variation_opentype = {"wght": weight}
+	# The axis must be the int OpenType tag: string keys are silently ignored.
+	fv.variation_opentype = {0x77676874: weight} # 'wght'
 	if spacing != 0:
 		fv.spacing_glyph = spacing
 	_font_cache[key] = fv
@@ -187,9 +188,9 @@ class ChunkyButton:
 		var body := Rect2(0, edge - eh, size.x, size.y - edge)
 		var r := minf(radius, body.size.y / 2.0)
 		if glow.a > 0.0 and not pressed and not disabled:
-			for k in 4:
-				UI.draw_round_flat(self, body.grow(2.0 + k * 4.0)
-						.grow_side(SIDE_BOTTOM, 6.0), r + k * 4.0, Color(glow, glow.a * 0.25))
+			for k in 3:
+				UI.draw_round_flat(self, body.grow(2.0 + k * 3.0)
+						.grow_side(SIDE_BOTTOM, 5.0), r + k * 3.0, Color(glow, glow.a * 0.16))
 		UI.draw_round_flat(self,
 				Rect2(body.position + Vector2(0, eh), body.size), r, edge_color)
 		var st := stops
