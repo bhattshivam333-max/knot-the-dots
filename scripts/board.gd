@@ -458,7 +458,9 @@ func _draw() -> void:
 			_origin + Vector2(cell) * _cell_px + Vector2(pad, pad),
 			Vector2(_cell_px - pad * 2.0, _cell_px - pad * 2.0)))
 
-	# Lines, most recently touched on top.
+	# Lines, most recently touched on top: clean solid strokes, no glow.
+	# The half-width circles are only round caps/joins, never visible
+	# as separate dots.
 	var w := _cell_px * 0.34
 	for c in z_order:
 		var p: Array = paths[c]
@@ -468,11 +470,6 @@ func _draw() -> void:
 		var pts := PackedVector2Array()
 		for cell in p:
 			pts.append(_center(cell))
-		var glow := Color(col, 0.2)
-		if pts.size() >= 2:
-			draw_polyline(pts, glow, w * 1.9, true)
-		for q in pts:
-			draw_circle(q, w * 0.95, glow, true, -1.0, true)
 		if pts.size() >= 2:
 			draw_polyline(pts, col, w, true)
 		for q in pts:
