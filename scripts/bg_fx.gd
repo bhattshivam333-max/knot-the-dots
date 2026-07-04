@@ -1,6 +1,7 @@
 class_name BgFx
 extends Control
-## Soft floating color orbs behind every screen, per the KNOTS design.
+## Floating blurred color orbs, using the mockup's exact four circles
+## (size / position / opacity / float duration) plus a few extra subtle ones.
 
 var _dots: Array = []
 var _t := 0.0
@@ -8,19 +9,22 @@ var _t := 0.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	var picks := [Color("#ff5c72"), Color("#37e08c"), Color("#5ec8ff"),
-			Color("#ffcc33"), Color("#b775f5")]
-	for i in 9:
-		_dots.append({
-			"base": Vector2(rng.randf() * 720.0, rng.randf() * 1280.0),
-			"r": rng.randf_range(16, 34),
-			"amp": rng.randf_range(8, 18),
-			"speed": rng.randf_range(0.5, 1.1),
-			"phase": rng.randf() * TAU,
-			"col": picks[i % picks.size()],
-		})
+	# The four orbs from the menu mockup: pos is the circle center at 390x844.
+	_dots = [
+		{"pos": Vector2(70, 150), "r": 30.0, "col": Color("#ff5c72"), "a": 0.35,
+			"dur": 5.0, "phase": 0.0},
+		{"pos": Vector2(334, 282), "r": 22.0, "col": Color("#37e08c"), "a": 0.3,
+			"dur": 6.5, "phase": 0.6},
+		{"pos": Vector2(78, 418), "r": 18.0, "col": Color("#5ec8ff"), "a": 0.3,
+			"dur": 5.8, "phase": 1.1},
+		{"pos": Vector2(307, 193), "r": 13.0, "col": Color("#ffcc33"), "a": 0.3,
+			"dur": 4.6, "phase": 0.3},
+		# Extra dim ones lower down so the whole screen breathes.
+		{"pos": Vector2(120, 640), "r": 24.0, "col": Color("#b775f5"), "a": 0.12,
+			"dur": 7.0, "phase": 2.0},
+		{"pos": Vector2(320, 720), "r": 18.0, "col": Color("#ff5c72"), "a": 0.1,
+			"dur": 6.0, "phase": 3.1},
+	]
 
 
 func _process(delta: float) -> void:
@@ -30,12 +34,13 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	for d in _dots:
-		var p: Vector2 = d["base"] + Vector2(
-			sin(_t * d["speed"] * 0.6 + d["phase"]) * d["amp"] * 0.6,
-			sin(_t * d["speed"] + d["phase"]) * d["amp"])
-		var r: float = d["r"]
+		# CSS knotsFloat: translateY 0 -> -16 -> 0 over the duration.
+		var f := fposmod((_t - d["phase"]) / d["dur"], 1.0)
+		var dy := -16.0 * (0.5 - 0.5 * cos(f * TAU))
+		var p: Vector2 = d["pos"] + Vector2(0, dy)
 		var col: Color = d["col"]
-		# Layered circles fake the blurred glow from the mockup.
-		draw_circle(p, r * 1.5, Color(col, 0.04), true, -1.0, true)
-		draw_circle(p, r * 1.15, Color(col, 0.06), true, -1.0, true)
-		draw_circle(p, r, Color(col, 0.12), true, -1.0, true)
+		var a: float = d["a"]
+		var r: float = d["r"]
+		# Layered edge fades in for the CSS blur(2px).
+		draw_circle(p, r + 2.0, Color(col, a * 0.35), true, -1.0, true)
+		draw_circle(p, r, Color(col, a), true, -1.0, true)

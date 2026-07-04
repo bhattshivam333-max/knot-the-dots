@@ -1,7 +1,7 @@
 class_name GameScreen
 extends Control
-## Gameplay screen per the KNOTS design: pause + level/timer + coins header,
-## the board, UNDO/HINT buttons, and pause / win / lose overlays.
+## Gameplay screen, 1:1 with the mockup: pause | LEVEL + timer | coins header,
+## the board, UNDO / HINT buttons with icons, and pause / win / lose overlays.
 
 const HINT_COST := 15
 
@@ -27,13 +27,13 @@ func _ready() -> void:
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right"]:
-		margin.add_theme_constant_override("margin_" + side, 18)
-	margin.add_theme_constant_override("margin_top", 34)
-	margin.add_theme_constant_override("margin_bottom", 26)
+		margin.add_theme_constant_override("margin_" + side, 20)
+	margin.add_theme_constant_override("margin_top", 50)
+	margin.add_theme_constant_override("margin_bottom", 30)
 	add_child(margin)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 12)
+	box.add_theme_constant_override("separation", 10)
 	margin.add_child(box)
 
 	# Header: pause | level + timer | coins.
@@ -41,7 +41,7 @@ func _ready() -> void:
 	box.add_child(top)
 
 	var pause_btn := UI.icon_button()
-	pause_btn.add_child(UI.center_icon(UI.PauseIcon.new(), 10.0))
+	pause_btn.add_child(UI.center_icon(UI.PauseIcon.new(), 8.0))
 	pause_btn.pressed.connect(_on_pause)
 	top.add_child(pause_btn)
 
@@ -50,11 +50,13 @@ func _ready() -> void:
 	mid.alignment = BoxContainer.ALIGNMENT_CENTER
 	mid.add_theme_constant_override("separation", 6)
 	top.add_child(mid)
-	mid.add_child(UI.heading(_title_text(), 16, UI.TEXT_SOFT, 2))
-	_timer_chip = UI.chip()
+	var lvl := UI.label(_title_text(), 15, UI.TEXT_SOFT, UI.fredoka(600, 2))
+	mid.add_child(lvl)
+	_timer_chip = UI.chip(14, Vector4(12, 4, 12, 4))
 	_timer_chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var tbox: HBoxContainer = _timer_chip.get_child(0)
-	_timer_label = UI.label("0:00", 14, Color("#cfc4ea"), UI.fredoka(600))
+	tbox.add_theme_constant_override("separation", 6)
+	_timer_label = UI.label("0:00", 14, UI.ICON_COL, UI.fredoka(600))
 	tbox.add_child(_timer_label)
 	mid.add_child(_timer_chip)
 
@@ -68,22 +70,24 @@ func _ready() -> void:
 	board.level_won.connect(_on_won)
 	box.add_child(board)
 
-	# Bottom: UNDO | HINT.
+	# Bottom: UNDO | HINT, 150x58 each, gap 16.
 	var bottom := HBoxContainer.new()
 	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
 	bottom.add_theme_constant_override("separation", 16)
 	box.add_child(bottom)
 
-	var undo := UI.chunky_button("UNDO", 17, "purple")
-	undo.custom_minimum_size = Vector2(150, 60)
+	var undo := UI.chunky_button("", 16, "purple")
+	undo.custom_minimum_size = Vector2(150, 58)
+	_button_content(undo, UI.UndoIcon.new(), "UNDO", UI.TEXT_SOFT, "")
 	undo.pressed.connect(func() -> void:
 		if board.can_undo():
 			Sfx.play("cut")
 			board.undo())
 	bottom.add_child(undo)
 
-	_hint_btn = UI.chunky_button("HINT  %d" % HINT_COST, 17, "gold")
-	_hint_btn.custom_minimum_size = Vector2(150, 60)
+	_hint_btn = UI.chunky_button("", 16, "gold")
+	_hint_btn.custom_minimum_size = Vector2(150, 58)
+	_button_content(_hint_btn, UI.BulbIcon.new(), "HINT", UI.GOLD_TEXT, str(HINT_COST))
 	_hint_btn.pressed.connect(_on_hint)
 	bottom.add_child(_hint_btn)
 
@@ -93,6 +97,43 @@ func _ready() -> void:
 	time_left = time_limit
 	_update_timer_label()
 	_update_hint_state()
+
+
+## Icon + label (+ optional badge) centered inside a chunky button,
+## sinking with the button on press like the mockup's transform.
+func _button_content(b: Button, icon: Control, text: String, fg: Color, badge: String) -> void:
+	var hbox := HBoxContainer.new()
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.add_theme_constant_override("separation", 8)
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var edge: float = (b as UI.ChunkyButton).edge
+	hbox.offset_bottom = -edge
+	b.add_child(hbox)
+	if "color" in icon:
+		icon.color = fg
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hbox.add_child(icon)
+	hbox.add_child(UI.label(text, 16, fg, UI.fredoka(600)))
+	if badge != "":
+		var bp := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0.25)
+		sb.set_corner_radius_all(10)
+		sb.content_margin_left = 8.0
+		sb.content_margin_right = 8.0
+		sb.content_margin_top = 2.0
+		sb.content_margin_bottom = 2.0
+		bp.add_theme_stylebox_override("panel", sb)
+		bp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bp.add_child(UI.label(badge, 12, fg, UI.fredoka(600)))
+		hbox.add_child(bp)
+	b.button_down.connect(func() -> void:
+		hbox.offset_top = edge - 1.0
+		hbox.offset_bottom = -1.0)
+	b.button_up.connect(func() -> void:
+		hbox.offset_top = 0.0
+		hbox.offset_bottom = -edge)
 
 
 func _process(delta: float) -> void:
@@ -115,7 +156,7 @@ func _update_timer_label() -> void:
 		sb.border_color = Color(UI.RED, 0.35) if low else UI.CHIP_BORDER
 		_timer_chip.add_theme_stylebox_override("panel", sb)
 		_timer_label.add_theme_color_override("font_color",
-				Color("#ff8095") if low else Color("#cfc4ea"))
+				Color("#ff8095") if low else UI.ICON_COL)
 
 
 func _update_hint_state() -> void:
@@ -175,16 +216,16 @@ func _on_pause() -> void:
 	var box := _make_overlay_panel(300)
 	box.add_child(UI.heading("PAUSED", 26, UI.TEXT, 1))
 
-	var resume := UI.chunky_button("RESUME", 19, "gold")
-	resume.custom_minimum_size = Vector2(244, 60)
+	var resume := UI.chunky_button("RESUME", 18, "gold")
+	resume.custom_minimum_size = Vector2(244, 58)
 	resume.pressed.connect(func() -> void:
 		Sfx.play("click")
 		board.frozen = false
 		_overlay.queue_free())
 	box.add_child(resume)
 
-	var restart := UI.chunky_button("RESTART LEVEL", 15, "purple2")
-	restart.custom_minimum_size = Vector2(244, 54)
+	var restart := UI.chunky_button("RESTART LEVEL", 16, "purple2")
+	restart.custom_minimum_size = Vector2(244, 52)
 	restart.pressed.connect(func() -> void:
 		Sfx.play("click")
 		_restart())
@@ -222,22 +263,22 @@ func _on_won() -> void:
 
 
 func _show_win(stars: int, coins_earned: int) -> void:
-	var box := _make_overlay_panel(310)
+	var box := _make_overlay_panel(310, UI.GRAD_PANEL, Vector4(26, 34, 26, 28))
 
 	var confetti := ConfettiFx.new()
 	confetti.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(confetti)
 	_overlay.move_child(confetti, 1) # above dim, below panel
 
-	box.add_child(UI.heading("LEVEL COMPLETE!", 24, UI.GOLD_LIGHT, 1))
+	box.add_child(UI.heading("LEVEL COMPLETE!", 26, UI.GOLD_LIGHT, 1))
 
 	var stars_row := StarRow.new()
-	stars_row.star_size = 42.0
+	stars_row.star_size = 34.0
 	stars_row.count = 0
 	stars_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(stars_row)
 
-	var coin_chip := UI.chip()
+	var coin_chip := UI.chip(18, Vector4(18, 10, 18, 10))
 	coin_chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var csb: StyleBoxFlat = coin_chip.get_theme_stylebox("panel").duplicate()
 	csb.bg_color = Color(UI.GOLD, 0.12)
@@ -250,19 +291,19 @@ func _show_win(stars: int, coins_earned: int) -> void:
 
 	var next_btn: Button
 	if not is_daily and level_idx + 1 < int(Levels.PACKS[pack_idx]["count"]):
-		next_btn = UI.chunky_button("NEXT LEVEL", 19, "gold")
+		next_btn = UI.chunky_button("NEXT LEVEL", 18, "gold")
 		next_btn.pressed.connect(func() -> void:
 			Sfx.play("click")
 			main.show_game(pack_idx, level_idx + 1))
 	else:
-		next_btn = UI.chunky_button("LEVELS", 19, "gold")
+		next_btn = UI.chunky_button("LEVELS", 18, "gold")
 		next_btn.pressed.connect(func() -> void:
 			Sfx.play("click")
 			if is_daily:
 				main.show_menu()
 			else:
 				main.show_select())
-	next_btn.custom_minimum_size = Vector2(254, 60)
+	next_btn.custom_minimum_size = Vector2(258, 58)
 	box.add_child(next_btn)
 
 	box.add_child(_home_button())
@@ -283,12 +324,12 @@ func _on_time_up() -> void:
 	ended = true
 	board.frozen = true
 	Sfx.play("lose")
-	var box := _make_overlay_panel(300)
+	var box := _make_overlay_panel(300, UI.GRAD_PANEL_LOSE, Vector4(26, 34, 26, 28))
 	box.add_child(UI.heading("TIME'S UP!", 26, Color("#ff8095"), 1))
-	box.add_child(UI.label("So close - give it another shot.", 15, Color("#c9bde0")))
+	box.add_child(UI.label("So close - give it another shot.", 14, Color("#c9bde0")))
 
-	var retry := UI.chunky_button("TRY AGAIN", 19, "red")
-	retry.custom_minimum_size = Vector2(244, 60)
+	var retry := UI.chunky_button("TRY AGAIN", 18, "red")
+	retry.custom_minimum_size = Vector2(248, 58)
 	retry.pressed.connect(func() -> void:
 		Sfx.play("click")
 		_restart())
@@ -299,7 +340,8 @@ func _on_time_up() -> void:
 
 # ------------------------------------------------------------------ helpers
 
-func _make_overlay_panel(width: float) -> VBoxContainer:
+func _make_overlay_panel(width: float, stops: Array = UI.GRAD_PANEL,
+		pad := Vector4(28, 32, 28, 28)) -> VBoxContainer:
 	_overlay = Control.new()
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_overlay)
@@ -313,7 +355,7 @@ func _make_overlay_panel(width: float) -> VBoxContainer:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(center)
 
-	var panel := UI.overlay_panel()
+	var panel := UI.overlay_panel(stops, pad)
 	panel.custom_minimum_size = Vector2(width, 0)
 	center.add_child(panel)
 
@@ -322,7 +364,6 @@ func _make_overlay_panel(width: float) -> VBoxContainer:
 	box.add_theme_constant_override("separation", 16)
 	panel.add_child(box)
 
-	panel.pivot_offset = panel.size / 2.0
 	panel.scale = Vector2(0.8, 0.8)
 	create_tween().tween_property(panel, "scale", Vector2.ONE, 0.25) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -339,22 +380,25 @@ func _home_button() -> Button:
 
 func _toggle_button(name_txt: String, key: String) -> Button:
 	var on: bool = Progress.get_setting(key, true)
-	var b := UI.chunky_button("%s %s" % [name_txt, "ON" if on else "OFF"], 13,
-			"green" if on else "dark")
-	b.custom_minimum_size = Vector2(117, 0)
+	var b := UI.chunky_button("%s %s" % [name_txt, "ON" if on else "OFF"], 12,
+			"green" if on else "dark", 1)
+	b.custom_minimum_size = Vector2(117, 48)
+	var cb := b as UI.ChunkyButton
+	cb.radius = 16.0
+	cb.edge = 4.0
 	b.pressed.connect(func() -> void:
 		var now: bool = not Progress.get_setting(key, true)
 		Progress.set_setting(key, now)
 		if key == "music":
 			Sfx.set_music(now)
 		Sfx.play("click")
-		var fresh := UI.chunky_button("%s %s" % [name_txt, "ON" if now else "OFF"], 13,
-				"green" if now else "dark")
-		for st in ["normal", "hover", "pressed"]:
-			b.add_theme_stylebox_override(st, fresh.get_theme_stylebox(st))
-		for cst in ["font_color", "font_hover_color", "font_pressed_color"]:
-			b.add_theme_color_override(cst, fresh.get_theme_color(cst))
-		b.text = "%s %s" % [name_txt, "ON" if now else "OFF"])
+		cb.stops = UI.GRAD_GREEN2 if now else UI.GRAD_DARK
+		cb.edge_color = Color("#1f9e63") if now else Color("#1a1628")
+		var fg := Color("#1b3a2a") if now else UI.ICON_COL
+		for st in ["font_color", "font_hover_color", "font_pressed_color"]:
+			cb.add_theme_color_override(st, fg)
+		cb.text = "%s %s" % [name_txt, "ON" if now else "OFF"]
+		cb.queue_redraw())
 	return b
 
 
@@ -370,15 +414,15 @@ class ConfettiFx:
 		rng.randomize()
 		var palette := [Color("#ff5c72"), Color("#37e08c"), Color("#ffcc33"),
 				Color("#b775f5"), Color("#5ec8ff")]
-		for i in 30:
+		for i in 26:
 			_bits.append({
 				"x": rng.randf(),
-				"y": -rng.randf() * 400.0 - 20.0,
-				"speed": rng.randf_range(220.0, 420.0),
+				"y": -rng.randf() * 300.0 - 20.0,
+				"speed": rng.randf_range(180.0, 340.0),
 				"rot": rng.randf() * TAU,
 				"spin": rng.randf_range(-4.0, 4.0),
-				"w": 7.0 + 4.0 * (i % 2),
-				"h": 14.0 + 3.0 * (i % 3),
+				"w": 10.0 if i % 2 == 0 else 7.0,
+				"h": 14.0 if i % 2 == 0 else 16.0,
 				"col": palette[i % palette.size()],
 			})
 

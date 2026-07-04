@@ -19,8 +19,10 @@ Sfx="*res://scripts/sfx.gd"
 
 [display]
 
-window/size/viewport_width=720
-window/size/viewport_height=1280
+window/size/viewport_width=390
+window/size/viewport_height=844
+window/size/window_width_override=468
+window/size/window_height_override=1013
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=1

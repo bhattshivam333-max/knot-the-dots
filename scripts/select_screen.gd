@@ -1,11 +1,10 @@
 class_name SelectScreen
 extends Control
-## Level select per the KNOTS design: back + coins header, pack chips,
-## then a scrollable zig-zag path of circular level nodes
-## (green = done with stars, gold pulsing = current, gray padlock = locked).
+## Level select, 1:1 with the mockup: back + SELECT LEVEL + coins header,
+## then a zig-zag path of circular nodes (green 64px done with stars above,
+## gold 68px pulsing current, gray 60px padlocked locked).
 
-const NODE_STEP := 96.0
-const NODE_SIZE := 68.0
+const NODE_STEP := 90.0
 
 var main: Node
 var pack_idx := 0
@@ -14,7 +13,6 @@ var _path_holder: Control
 var _scroll: ScrollContainer
 var _info: Label
 var _chips: Array[Button] = []
-var _pulse_node: Button
 
 
 func _ready() -> void:
@@ -27,22 +25,22 @@ func _ready() -> void:
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right"]:
 		margin.add_theme_constant_override("margin_" + side, 20)
-	margin.add_theme_constant_override("margin_top", 36)
-	margin.add_theme_constant_override("margin_bottom", 12)
+	margin.add_theme_constant_override("margin_top", 56)
+	margin.add_theme_constant_override("margin_bottom", 10)
 	add_child(margin)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 14)
+	box.add_theme_constant_override("separation", 12)
 	margin.add_child(box)
 
 	var top := HBoxContainer.new()
 	box.add_child(top)
-	var back := UI.icon_button("<")
+	var back := UI.icon_button("‹")
 	back.pressed.connect(func() -> void:
 		Sfx.play("click")
 		main.show_menu())
 	top.add_child(back)
-	var title := UI.heading("SELECT LEVEL", 20, UI.TEXT_SOFT, 2)
+	var title := UI.label("SELECT LEVEL", 17, UI.TEXT_SOFT, UI.fredoka(600, 2))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	top.add_child(title)
@@ -50,13 +48,16 @@ func _ready() -> void:
 
 	var chip_grid := GridContainer.new()
 	chip_grid.columns = 3
-	chip_grid.add_theme_constant_override("h_separation", 10)
-	chip_grid.add_theme_constant_override("v_separation", 10)
+	chip_grid.add_theme_constant_override("h_separation", 8)
+	chip_grid.add_theme_constant_override("v_separation", 8)
 	box.add_child(chip_grid)
 	for i in Levels.PACKS.size():
 		var p: Dictionary = Levels.PACKS[i]
-		var chip := UI.chunky_button("%s %dx%d" % [p["name"], p["size"], p["size"]], 13,
+		var chip := UI.chunky_button("%s %dx%d" % [p["name"], p["size"], p["size"]], 11,
 				"gold" if i == pack_idx else "purple")
+		(chip as UI.ChunkyButton).edge = 4.0
+		(chip as UI.ChunkyButton).radius = 14.0
+		chip.custom_minimum_size = Vector2(0, 36)
 		chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var idx := i
 		chip.pressed.connect(func() -> void:
@@ -67,7 +68,7 @@ func _ready() -> void:
 		chip_grid.add_child(chip)
 		_chips.append(chip)
 
-	_info = UI.label("", 15, UI.TEXT_DIM, UI.nunito(700))
+	_info = UI.label("", 13, UI.TEXT_DIM, UI.nunito(700))
 	box.add_child(_info)
 
 	_scroll = ScrollContainer.new()
@@ -84,16 +85,22 @@ func _ready() -> void:
 
 func _refresh() -> void:
 	for i in _chips.size():
-		var fresh := UI.chunky_button(_chips[i].text, 13, "gold" if i == pack_idx else "purple")
-		for st in ["normal", "hover", "pressed"]:
-			_chips[i].add_theme_stylebox_override(st, fresh.get_theme_stylebox(st))
-		for cst in ["font_color", "font_hover_color", "font_pressed_color"]:
-			_chips[i].add_theme_color_override(cst, fresh.get_theme_color(cst))
-		_chips[i].modulate.a = 1.0 if Progress.pack_unlocked(i) else 0.55
+		var cb := _chips[i] as UI.ChunkyButton
+		if i == pack_idx:
+			cb.stops = UI.GRAD_GOLD
+			cb.edge_color = UI.GOLD_DARK
+			for st in ["font_color", "font_hover_color", "font_pressed_color"]:
+				cb.add_theme_color_override(st, UI.GOLD_TEXT)
+		else:
+			cb.stops = UI.GRAD_PURPLE
+			cb.edge_color = Color("#170f2b")
+			for st in ["font_color", "font_hover_color", "font_pressed_color"]:
+				cb.add_theme_color_override(st, UI.TEXT_SOFT)
+		cb.modulate.a = 1.0 if Progress.pack_unlocked(i) else 0.55
+		cb.queue_redraw()
 
 	for child in _path_holder.get_children():
 		child.queue_free()
-	_pulse_node = null
 
 	var pack: Dictionary = Levels.PACKS[pack_idx]
 	if not Progress.pack_unlocked(pack_idx):
@@ -106,7 +113,7 @@ func _refresh() -> void:
 	var count := int(pack["count"])
 	_info.text = "%s  -  %d/%d solved" % [pack["name"], Progress.completed_count(pack_idx), count]
 
-	var total_h := count * NODE_STEP + 40.0
+	var total_h := count * NODE_STEP + 60.0
 	_path_holder.custom_minimum_size = Vector2(0, total_h)
 
 	var current := -1
@@ -118,8 +125,8 @@ func _refresh() -> void:
 	var current_y := 0.0
 	for i in count:
 		var node := _level_node(i, current)
-		var y := total_h - 80.0 - i * NODE_STEP
-		node.set_meta("xoff", -62.0 if i % 2 == 0 else 62.0)
+		var y := total_h - 90.0 - i * NODE_STEP
+		node.set_meta("xoff", -60.0 if i % 2 == 0 else 60.0)
 		node.set_meta("ypos", y)
 		_path_holder.add_child(node)
 		if i == current:
@@ -140,7 +147,7 @@ func _layout_nodes() -> void:
 	for child in _path_holder.get_children():
 		if child.has_meta("xoff"):
 			child.position = Vector2(
-				cx + float(child.get_meta("xoff")) - NODE_SIZE / 2.0,
+				cx + float(child.get_meta("xoff")) - child.size.x / 2.0,
 				float(child.get_meta("ypos")))
 
 
@@ -151,45 +158,27 @@ func _level_node(i: int, current: int) -> Control:
 	var is_current := i == current
 	var unlocked := done or is_current or i == 0
 
-	var b := Button.new()
-	b.custom_minimum_size = Vector2(NODE_SIZE, NODE_SIZE)
-	b.add_theme_font_override("font", UI.fredoka(700))
-	b.add_theme_font_size_override("font_size", 24)
-	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	b.text = str(i + 1) if unlocked else ""
-
-	var bg: Color
-	var edge: Color
-	var fg: Color
+	var b := UI.ChunkyButton.new()
+	var d: float
 	if done:
-		bg = UI.GREEN; edge = Color("#146b45"); fg = UI.GREEN_TEXT
+		d = 64.0
+		b.configure(UI.GRAD_GREEN, Color("#146b45"), 5.0, 32.0,
+				Color("#0c3a24"), UI.fredoka(700), 22, 0.0)
 	elif is_current:
-		bg = UI.GOLD; edge = UI.GOLD_DARK; fg = UI.GOLD_TEXT
+		d = 68.0
+		b.configure(UI.GRAD_GOLD, UI.GOLD_DARK, 6.0, 34.0,
+				UI.GOLD_TEXT, UI.fredoka(700), 24, 0.0)
 	else:
-		bg = UI.LOCKED_BG; edge = UI.LOCKED_DARK; fg = Color(1, 1, 1, 0.6)
-
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.set_corner_radius_all(int(NODE_SIZE / 2.0))
-	sb.border_width_bottom = 6
-	sb.border_color = edge
-	b.add_theme_stylebox_override("normal", sb)
-	var sbh: StyleBoxFlat = sb.duplicate()
-	sbh.bg_color = bg.lightened(0.06)
-	b.add_theme_stylebox_override("hover", sbh)
-	var sbp: StyleBoxFlat = sb.duplicate()
-	sbp.border_width_bottom = 1
-	b.add_theme_stylebox_override("pressed", sbp)
-	b.add_theme_stylebox_override("disabled", sb)
-	for st in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		b.add_theme_color_override(st, fg)
-	b.add_theme_color_override("font_disabled_color", fg)
+		d = 60.0
+		b.configure(UI.GRAD_LOCKED, Color("#221c33"), 5.0, 30.0,
+				Color(1, 1, 1, 0.6), UI.fredoka(700), 20, 0.0)
+	b.custom_minimum_size = Vector2(d, d + b.edge)
+	b.size = b.custom_minimum_size
+	b.text = str(i + 1) if unlocked else ""
 
 	if not unlocked:
 		b.disabled = true
-		var lock := UI.LockIcon.new()
-		lock.position = Vector2(NODE_SIZE / 2.0 - 12, NODE_SIZE / 2.0 - 15)
-		b.add_child(lock)
+		b.add_child(UI.center_icon(UI.LockIcon.new(), 13.0))
 	else:
 		var idx := i
 		b.pressed.connect(func() -> void:
@@ -198,19 +187,16 @@ func _level_node(i: int, current: int) -> Control:
 
 	if done:
 		var sr := StarRow.new()
-		sr.star_size = 13.0
+		sr.star_size = 12.0
 		sr.count = stars
-		sr.position = Vector2((NODE_SIZE - sr.custom_minimum_size.x) / 2.0, -20)
+		sr.position = Vector2((d - sr.custom_minimum_size.x) / 2.0, -18.0)
 		sr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(sr)
 
 	if is_current:
-		_pulse_node = b
-		b.pivot_offset = Vector2(NODE_SIZE / 2.0, NODE_SIZE / 2.0)
-		var tw := create_tween().set_loops()
-		tw.tween_property(b, "scale", Vector2(1.06, 1.06), 0.7) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tw.tween_property(b, "scale", Vector2.ONE, 0.7) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		var ring := UI.PulseRing.new()
+		ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		ring.offset_bottom = -b.edge
+		b.add_child(ring)
 
 	return b
