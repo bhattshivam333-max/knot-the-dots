@@ -43,6 +43,15 @@ func _run() -> void:
 	await get_tree().process_frame
 	_check(main.current is SelectScreen, "select builds")
 
+	print("zones map every level to a valid critter")
+	var zones_ok := true
+	for pi in Levels.PACKS.size():
+		for li in int(Levels.PACKS[pi]["count"]):
+			var z := Zones.zone_of_level(pi, li, int(Levels.PACKS[pi]["count"]))
+			if z < 0 or z >= Zones.ZONES.size():
+				zones_ok = false
+	_check(zones_ok, "zone_of_level in range for all 240 levels")
+
 	print("solve level 1 by drawing each solution path")
 	main.show_game(0, 0)
 	await get_tree().process_frame
@@ -50,10 +59,14 @@ func _run() -> void:
 	var board: Board = gs.board
 	_check(board.solution.size() >= 3, "level has flows")
 	_check(gs.time_left > 0.0, "timer is running")
+	_check(is_instance_valid(gs.critter), "zone critter present")
 
 	var coins_before: int = Progress.coins()
-	for c in board.solution.size():
+	_draw_solution(board, 0)
+	_check(gs.critter.mood == Critter.Mood.HAPPY, "critter cheers a connected pair")
+	for c in range(1, board.solution.size()):
 		_draw_solution(board, c)
+	_check(gs.critter.mood == Critter.Mood.CELEBRATE, "critter celebrates the win")
 	_check(board.done_count() == board.solution.size(), "all pairs connected")
 	_check(board.coverage() == 1.0, "board fully covered")
 	_check(board.locked, "win detected")
@@ -105,6 +118,7 @@ func _run() -> void:
 	_check(found, "found a place to cross lines")
 	_check(board.paths[0].size() < len_before, "crossed line was cut")
 	_check(not board.completed[0], "cut line no longer complete")
+	_check(gs.critter.mood == Critter.Mood.SAD, "critter winces at the cut")
 
 	print("hints solve the level")
 	board.restart()

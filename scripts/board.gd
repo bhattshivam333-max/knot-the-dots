@@ -10,6 +10,8 @@ extends Control
 
 signal state_changed
 signal level_won
+signal pair_connected
+signal line_cut
 
 var grid_n := 5
 var solution: Array = []      # color -> Array[Vector2i], the generator's paths
@@ -168,6 +170,7 @@ func apply_hint() -> void:
 	_last_move_color = target
 	_flash[target] = 1.0
 	Sfx.play("connect")
+	pair_connected.emit()
 	_after_change(target)
 	_check_win()
 
@@ -315,6 +318,7 @@ func _try_step(c: int, next: Vector2i) -> bool:
 		_flash[c] = 1.0
 		active = -1
 		Sfx.play("connect")
+		pair_connected.emit()
 		_after_change(c)
 		_commit_move()
 		_press_color = -1
@@ -347,6 +351,7 @@ func _cut(d: int, cell: Vector2i, quiet := false) -> void:
 	completed[d] = false
 	if not quiet:
 		Sfx.play("cut")
+		line_cut.emit()
 
 
 ## Whether color d's line runs horizontally through `cell`.

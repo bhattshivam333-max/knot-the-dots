@@ -122,13 +122,25 @@ func _refresh() -> void:
 	_map.count = count
 	_map.current = current
 	_map.pack_idx = pack_idx
-	_map.custom_minimum_size = Vector2(0, count * MapControl.STEP + 170.0)
+	_map.custom_minimum_size = Vector2(0, Zones.map_height(count))
 	_map.queue_redraw()
 
 	for i in count:
 		var node := _level_node(i, current)
 		node.set_meta("idx", i)
 		_map.add_child(node)
+
+	# The zone mascots stand beside the road in their own terrain.
+	var h_total := Zones.map_height(count)
+	for row in Zones.band_rows(pack_idx, h_total):
+		var cy: float = row["top"] + 190.0
+		if cy < 60.0 or cy > h_total - 140.0:
+			continue
+		var cr := Critter.new(Zones.ZONES[int(row["band"]) % Zones.ZONES.size()]["critter"])
+		cr.size = cr.custom_minimum_size
+		cr.set_meta("critter_y", cy)
+		_map.add_child(cr)
+
 	if not _map.resized.is_connected(_layout_nodes):
 		_map.resized.connect(_layout_nodes)
 	_layout_nodes()
@@ -146,6 +158,12 @@ func _layout_nodes() -> void:
 		if child.has_meta("idx"):
 			var p: Vector2 = _map.pos_of(int(child.get_meta("idx")))
 			child.position = p - Vector2(child.size.x / 2.0, child.size.x / 2.0)
+		elif child.has_meta("critter_y"):
+			var cy := float(child.get_meta("critter_y"))
+			var fi := (_map.size.y - 100.0 - cy) / Zones.STEP
+			var road_x := _map.pos_of(clampi(roundi(fi), 0, _map.count - 1)).x
+			var cx := _map.size.x - 96.0 if road_x < _map.size.x / 2.0 else 16.0
+			child.position = Vector2(cx, cy - child.size.y / 2.0)
 
 
 func _level_node(i: int, current: int) -> Control:
@@ -203,17 +221,15 @@ func _level_node(i: int, current: int) -> Control:
 class MapControl:
 	extends Control
 
-	const STEP := 104.0
-
-	# Muted night-terrain bands; the start index rotates per pack so each
-	# pack journeys through different scenery.
+	# Band colors in Zones.ZONES order: meadow, lake, violet hills,
+	# desert, teal forest, rose canyon.
 	const BANDS := [
-		Color("#203520"), # meadow
-		Color("#16304a"), # lake
-		Color("#2e2347"), # violet hills
-		Color("#38301a"), # desert
-		Color("#1a3231"), # teal forest
-		Color("#331f2c"), # rose canyon
+		Color("#203520"),
+		Color("#16304a"),
+		Color("#2e2347"),
+		Color("#38301a"),
+		Color("#1a3231"),
+		Color("#331f2c"),
 	]
 
 	var count := 0
@@ -228,18 +244,19 @@ class MapControl:
 		var amp := minf(112.0, size.x / 2.0 - 68.0)
 		return Vector2(
 			size.x / 2.0 + sin(i * 0.85 + 0.6) * amp,
-			size.y - 100.0 - i * STEP)
+			size.y - 100.0 - i * Zones.STEP)
 
 	func _draw() -> void:
 		if size.y < 10.0:
 			return
 		var rng := RandomNumberGenerator.new()
-		rng.seed = 4242 + pack_idx * 77
+		rng.seed = 4243 + pack_idx * 77
 
-		# Terrain bands with wavy tops, painted top to bottom.
-		var y := -60.0
-		var bi := pack_idx
-		while y < size.y:
+		# Terrain bands with wavy tops, painted top to bottom; the band
+		# layout comes from Zones so gameplay sees the same zone borders.
+		for row in Zones.band_rows(pack_idx, size.y):
+			var y: float = row["top"]
+			var bi: int = row["band"]
 			var col: Color = BANDS[bi % BANDS.size()]
 			var pts := PackedVector2Array()
 			var steps := 26
@@ -249,8 +266,6 @@ class MapControl:
 			pts.append(Vector2(size.x, size.y))
 			pts.append(Vector2(0, size.y))
 			draw_colored_polygon(pts, Color(col, 0.88))
-			y += 340.0 + rng.randf() * 160.0
-			bi += 1
 
 		# Decorations, kept off the road corridor.
 		for i in int(size.y / 42.0):
@@ -258,7 +273,7 @@ class MapControl:
 					rng.randf() * (size.y - 80.0) + 20.0)
 			var kind := rng.randi_range(0, 3)
 			if count > 0:
-				var fi := (size.y - 100.0 - p.y) / STEP
+				var fi := (size.y - 100.0 - p.y) / Zones.STEP
 				var near := clampi(roundi(fi), 0, count - 1)
 				var too_close := false
 				for j in [near - 1, near, near + 1]:

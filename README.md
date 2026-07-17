@@ -23,8 +23,16 @@ buttons, glossy dots on a checkerboard board, and pop/confetti animations.
   auto-draw one flow.
 - **Level timer** — size-based time limit, 1–3 stars by remaining time,
   TIME'S UP retry screen, pause menu (resume / restart / sound / music).
-- **Undo**, zig-zag level path with locked/current/done nodes, pack unlocking
-  (solve 5 levels of a pack to open the next), progress saved on device.
+- **World-map level select** — a winding road through themed terrain zones
+  (Meadow, Lake, Violet Hills, Desert, Teal Forest, Rose Canyon) with
+  locked/current/done nodes and zone mascots standing along the path.
+- **Zone critters** — each zone has a hand-drawn mascot (fox, frog, owl,
+  cactus, firefly, bat) that accompanies you in its levels and reacts to
+  play: cheers connected pairs, winces when a line gets cut, trembles when
+  time runs low, celebrates wins and droops on defeat (`scripts/critter.gd`,
+  zone mapping in `scripts/zones.gd`).
+- **Undo**, pack unlocking (solve 5 levels of a pack to open the next),
+  progress saved on device.
 - Touch-first UI, portrait, synthesized sound effects, optional
   **letter labels on dots** for color-blind players.
 - Android back-button navigation.
