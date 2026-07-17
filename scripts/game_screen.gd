@@ -235,7 +235,6 @@ func _on_pause() -> void:
 	toggles.add_theme_constant_override("separation", 10)
 	box.add_child(toggles)
 	toggles.add_child(_toggle_button("SOUND", "sound"))
-	toggles.add_child(_toggle_button("MUSIC", "music"))
 
 	box.add_child(_home_button())
 
@@ -389,8 +388,6 @@ func _toggle_button(name_txt: String, key: String) -> Button:
 	b.pressed.connect(func() -> void:
 		var now: bool = not Progress.get_setting(key, true)
 		Progress.set_setting(key, now)
-		if key == "music":
-			Sfx.set_music(now)
 		Sfx.play("click")
 		cb.stops = UI.GRAD_GREEN2 if now else UI.GRAD_DARK
 		cb.edge_color = Color("#1f9e63") if now else Color("#1a1628")

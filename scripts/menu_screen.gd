@@ -174,11 +174,7 @@ func _show_settings() -> void:
 	toggles.add_theme_constant_override("separation", 10)
 	box.add_child(toggles)
 	toggles.add_child(_toggle_button("SOUND", "sound", true))
-	toggles.add_child(_toggle_button("MUSIC", "music", true))
-	var letters_row := HBoxContainer.new()
-	letters_row.add_theme_constant_override("separation", 10)
-	box.add_child(letters_row)
-	letters_row.add_child(_toggle_button("DOT LETTERS", "letters", false))
+	toggles.add_child(_toggle_button("DOT LETTERS", "letters", false))
 
 	var close := UI.chunky_button("CLOSE", 16, "gold")
 	close.custom_minimum_size = Vector2(244, 52)
@@ -202,8 +198,6 @@ func _toggle_button(name_txt: String, key: String, def: bool) -> Button:
 	b.pressed.connect(func() -> void:
 		var now: bool = not Progress.get_setting(key, def)
 		Progress.set_setting(key, now)
-		if key == "music":
-			Sfx.set_music(now)
 		Sfx.play("click")
 		cb.stops = UI.GRAD_GREEN2 if now else UI.GRAD_DARK
 		cb.edge_color = Color("#1f9e63") if now else Color("#1a1628")

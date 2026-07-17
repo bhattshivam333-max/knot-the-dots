@@ -25,9 +25,8 @@ buttons, glossy dots on a checkerboard board, and pop/confetti animations.
   TIME'S UP retry screen, pause menu (resume / restart / sound / music).
 - **Undo**, zig-zag level path with locked/current/done nodes, pack unlocking
   (solve 5 levels of a pack to open the next), progress saved on device.
-- Touch-first UI, portrait, glowing line rendering, synthesized sound effects
-  and looping ambient music, optional **letter labels on dots** for
-  color-blind players.
+- Touch-first UI, portrait, synthesized sound effects, optional
+  **letter labels on dots** for color-blind players.
 - Android back-button navigation.
 
 Fonts: Fredoka & Nunito (SIL Open Font License, see `assets/fonts/OFL.txt`).
