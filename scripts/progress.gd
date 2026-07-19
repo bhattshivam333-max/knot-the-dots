@@ -95,6 +95,66 @@ func claim_daily_bonus() -> Dictionary:
 	return info
 
 
+# ------------------------------------------------------------------ mascots
+
+const FEED_COST := 10
+const FEED_GAIN := 35
+const HUNGER_PER_DAY := 20
+
+
+func owned_mascots() -> Array:
+	return cfg.get_value("mascots", "owned", [])
+
+
+func owns_mascot(kind: String) -> bool:
+	return kind in owned_mascots()
+
+
+func buy_mascot(kind: String, price: int) -> bool:
+	if owns_mascot(kind) or not spend_coins(price):
+		return false
+	var arr := owned_mascots()
+	arr.append(kind)
+	cfg.set_value("mascots", "owned", arr)
+	cfg.set_value("mascots", "fed_" + kind,
+			{"value": 70, "at": Time.get_unix_time_from_system()})
+	if active_mascot() == "":
+		cfg.set_value("mascots", "active", kind)
+	cfg.save(SAVE_PATH)
+	return true
+
+
+func active_mascot() -> String:
+	return cfg.get_value("mascots", "active", "")
+
+
+func set_active_mascot(kind: String) -> void:
+	if owns_mascot(kind):
+		cfg.set_value("mascots", "active", kind)
+		cfg.save(SAVE_PATH)
+
+
+## 0-100, decaying HUNGER_PER_DAY per day since last fed.
+func fullness(kind: String) -> int:
+	var d: Dictionary = cfg.get_value("mascots", "fed_" + kind, {})
+	if d.is_empty():
+		return 0
+	var days := (Time.get_unix_time_from_system() - float(d["at"])) / 86400.0
+	return clampi(int(d["value"]) - int(days * HUNGER_PER_DAY), 0, 100)
+
+
+func feed_mascot(kind: String) -> bool:
+	if not owns_mascot(kind) or fullness(kind) >= 100:
+		return false
+	if not spend_coins(FEED_COST):
+		return false
+	cfg.set_value("mascots", "fed_" + kind, {
+		"value": clampi(fullness(kind) + FEED_GAIN, 0, 100),
+		"at": Time.get_unix_time_from_system()})
+	cfg.save(SAVE_PATH)
+	return true
+
+
 func get_setting(key: String, def: Variant) -> Variant:
 	return cfg.get_value("settings", key, def)
 

@@ -5,11 +5,33 @@ extends Node
 
 var fails := 0
 
+var _save_backup := PackedByteArray()
+var _had_save := false
+
+
+## Run against a clean save, then put the player's real save back.
+func _shelve_save() -> void:
+	if FileAccess.file_exists("user://progress.cfg"):
+		_had_save = true
+		_save_backup = FileAccess.get_file_as_bytes("user://progress.cfg")
+	for section in ["wallet", "mascots", "levels", "settings"]:
+		if Progress.cfg.has_section(section):
+			Progress.cfg.erase_section(section)
+
+
+func _restore_save() -> void:
+	if _had_save:
+		var f := FileAccess.open("user://progress.cfg", FileAccess.WRITE)
+		f.store_buffer(_save_backup)
+		f.close()
+	else:
+		DirAccess.remove_absolute(OS.get_user_data_dir().path_join("progress.cfg"))
+
 
 func _ready() -> void:
+	_shelve_save()
 	await _run()
-	# Don't leave test results in the player's save file.
-	DirAccess.remove_absolute(OS.get_user_data_dir().path_join("progress.cfg"))
+	_restore_save()
 	get_tree().quit(1 if fails > 0 else 0)
 
 
@@ -50,6 +72,24 @@ func _run() -> void:
 	main.show_select()
 	await get_tree().process_frame
 	_check(main.current is SelectScreen, "select builds")
+
+	print("mascot store economy")
+	Progress.add_coins(500)
+	var price := int(Zones.ZONES[0]["price"])
+	var wallet: int = Progress.coins()
+	_check(Progress.buy_mascot("fox", price), "adopt the fox")
+	_check(Progress.coins() == wallet - price, "adoption costs coins")
+	_check(Progress.owns_mascot("fox"), "fox is owned")
+	_check(not Progress.buy_mascot("fox", price), "cannot adopt twice")
+	_check(Progress.active_mascot() == "fox", "first pet becomes active")
+	var f0: int = Progress.fullness("fox")
+	_check(f0 > 0, "new pet starts fed")
+	_check(Progress.feed_mascot("fox"), "feeding works")
+	_check(Progress.fullness("fox") > f0, "fullness increased")
+	_check(not Progress.feed_mascot("owl"), "cannot feed unowned pet")
+	main.show_store()
+	await get_tree().process_frame
+	_check(main.current is StoreScreen, "store builds")
 
 	print("zones map every level to a valid critter")
 	var zones_ok := true

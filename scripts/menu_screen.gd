@@ -100,6 +100,28 @@ func _ready() -> void:
 		main.show_daily())
 	row.add_child(daily)
 
+	var store := UI.chunky_button("MASCOTS", 14, "purple")
+	store.custom_minimum_size = Vector2(0, 44)
+	store.pressed.connect(func() -> void:
+		Sfx.play("click")
+		main.show_store())
+	row.add_child(store)
+
+	# The adopted mascot hangs out on the title screen.
+	var pet: String = Progress.active_mascot()
+	if pet != "":
+		var buddy := Critter.new(pet)
+		buddy.hungry = Progress.fullness(pet) < 35
+		buddy.anchor_left = 0.0
+		buddy.anchor_top = 1.0
+		buddy.anchor_right = 0.0
+		buddy.anchor_bottom = 1.0
+		buddy.offset_left = 14.0
+		buddy.offset_top = -206.0
+		buddy.offset_right = 98.0
+		buddy.offset_bottom = -110.0
+		add_child(buddy)
+
 	if not Progress.daily_bonus_info().is_empty():
 		_show_daily_bonus.call_deferred()
 

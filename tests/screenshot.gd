@@ -4,13 +4,27 @@ extends Node
 
 var outdir := "/tmp"
 
+var _save_backup := PackedByteArray()
+var _had_save := false
+
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("outdir="):
 			outdir = arg.trim_prefix("outdir=")
+	if FileAccess.file_exists("user://progress.cfg"):
+		_had_save = true
+		_save_backup = FileAccess.get_file_as_bytes("user://progress.cfg")
+	for section in ["wallet", "mascots", "levels", "settings"]:
+		if Progress.cfg.has_section(section):
+			Progress.cfg.erase_section(section)
 	await _run()
-	DirAccess.remove_absolute(OS.get_user_data_dir().path_join("progress.cfg"))
+	if _had_save:
+		var f := FileAccess.open("user://progress.cfg", FileAccess.WRITE)
+		f.store_buffer(_save_backup)
+		f.close()
+	else:
+		DirAccess.remove_absolute(OS.get_user_data_dir().path_join("progress.cfg"))
 	get_tree().quit()
 
 
@@ -32,6 +46,13 @@ func _run() -> void:
 	main.show_select()
 	await get_tree().process_frame
 	await _shot("2_select")
+
+	Progress.add_coins(300)
+	Progress.buy_mascot("fox", 100)
+	Progress.buy_mascot("frog", 150)
+	main.show_store()
+	await get_tree().process_frame
+	await _shot("6_store")
 
 	main.show_game(0, 2)
 	await get_tree().process_frame

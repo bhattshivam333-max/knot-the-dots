@@ -63,11 +63,17 @@ func show_daily() -> void:
 	_swap(s)
 
 
+func show_store() -> void:
+	var s := StoreScreen.new()
+	s.main = self
+	_swap(s)
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if current is GameScreen:
 			show_select()
-		elif current is SelectScreen:
+		elif current is SelectScreen or current is StoreScreen:
 			show_menu()
 		else:
 			get_tree().quit()

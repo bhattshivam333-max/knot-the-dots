@@ -6,12 +6,12 @@ class_name Zones
 const STEP := 104.0
 
 const ZONES := [
-	{"name": "Meadow", "critter": "fox"},
-	{"name": "Lake", "critter": "frog"},
-	{"name": "Violet Hills", "critter": "owl"},
-	{"name": "Desert", "critter": "cactus"},
-	{"name": "Teal Forest", "critter": "firefly"},
-	{"name": "Rose Canyon", "critter": "bat"},
+	{"name": "Meadow", "critter": "fox", "pet": "Pip", "price": 100},
+	{"name": "Lake", "critter": "frog", "pet": "Momo", "price": 150},
+	{"name": "Violet Hills", "critter": "owl", "pet": "Luna", "price": 200},
+	{"name": "Desert", "critter": "cactus", "pet": "Spike", "price": 250},
+	{"name": "Teal Forest", "critter": "firefly", "pet": "Glow", "price": 300},
+	{"name": "Rose Canyon", "critter": "bat", "pet": "Echo", "price": 350},
 ]
 
 

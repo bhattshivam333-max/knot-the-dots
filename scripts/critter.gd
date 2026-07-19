@@ -15,10 +15,12 @@ const REACT_TIME := 0.9
 
 var kind := "fox"
 var mood: int = Mood.IDLE
+var hungry := false
 
 var _t := 0.0
 var _mood_t := 0.0
 var _blink := 0.0
+var _hearts: Array = []
 
 
 func _init(p_kind := "fox") -> void:
@@ -37,7 +39,22 @@ func _process(delta: float) -> void:
 		_blink -= delta
 	elif mood == Mood.IDLE and randf() < delta / 3.5:
 		_blink = 0.12
+	for i in range(_hearts.size() - 1, -1, -1):
+		_hearts[i]["t"] += delta
+		if _hearts[i]["t"] > 1.2:
+			_hearts.remove_at(i)
 	queue_redraw()
+
+
+## Feeding: happy hop plus a little burst of floating hearts.
+func feed_burst() -> void:
+	hungry = false
+	react_happy()
+	for i in 5:
+		_hearts.append({
+			"p": Vector2(size.x / 2.0 + randf_range(-18.0, 18.0), size.y - 46.0),
+			"t": -randf() * 0.25,
+		})
 
 
 func react_happy() -> void:
@@ -115,12 +132,29 @@ func _draw() -> void:
 		_:
 			_fox()
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	for h in _hearts:
+		var ht: float = h["t"]
+		if ht < 0.0:
+			continue
+		var hp: Vector2 = h["p"] - Vector2(sin(ht * 7.0) * 4.0, ht * 44.0)
+		_heart(hp, 5.5, Color("#ff5c72", clampf(1.0 - ht / 1.2, 0.0, 1.0)))
+
+
+func _heart(c: Vector2, s: float, col: Color) -> void:
+	draw_circle(c + Vector2(-s * 0.5, -s * 0.3), s * 0.55, col, true, -1.0, true)
+	draw_circle(c + Vector2(s * 0.5, -s * 0.3), s * 0.55, col, true, -1.0, true)
+	draw_colored_polygon(PackedVector2Array([
+		c + Vector2(-s * 1.0, -s * 0.05),
+		c + Vector2(s * 1.0, -s * 0.05),
+		c + Vector2(0, s * 1.0),
+	]), col)
 
 
 ## Eyes + mouth. `pos` is between the eyes, in body-local coords.
 func _face(pos: Vector2, s := 1.0, dark := Color("#241a2e"), eye_dx := 7.0) -> void:
 	var happy := mood == Mood.HAPPY or mood == Mood.CELEBRATE
-	var sad := mood == Mood.SAD or mood == Mood.DROOP
+	var sad := mood == Mood.SAD or mood == Mood.DROOP \
+			or (hungry and mood == Mood.IDLE)
 	var wide := mood == Mood.WORRIED
 	for sx in [-1.0, 1.0]:
 		var ep := pos + Vector2(sx * eye_dx * s, 0)
