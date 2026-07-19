@@ -38,6 +38,14 @@ func _run() -> void:
 	print("menu screen")
 	_check(main.current is MenuScreen, "menu builds")
 
+	print("daily login bonus")
+	var info: Dictionary = Progress.daily_bonus_info()
+	_check(not info.is_empty() and int(info["amount"]) >= 10, "bonus available on first launch")
+	var wallet_before: int = Progress.coins()
+	var claimed: Dictionary = Progress.claim_daily_bonus()
+	_check(Progress.coins() == wallet_before + int(claimed["amount"]), "bonus pays coins")
+	_check(Progress.daily_bonus_info().is_empty(), "bonus claimable once per day")
+
 	print("select screen")
 	main.show_select()
 	await get_tree().process_frame
@@ -59,14 +67,10 @@ func _run() -> void:
 	var board: Board = gs.board
 	_check(board.solution.size() >= 3, "level has flows")
 	_check(gs.time_left > 0.0, "timer is running")
-	_check(is_instance_valid(gs.critter), "zone critter present")
 
 	var coins_before: int = Progress.coins()
-	_draw_solution(board, 0)
-	_check(gs.critter.mood == Critter.Mood.HAPPY, "critter cheers a connected pair")
-	for c in range(1, board.solution.size()):
+	for c in board.solution.size():
 		_draw_solution(board, c)
-	_check(gs.critter.mood == Critter.Mood.CELEBRATE, "critter celebrates the win")
 	_check(board.done_count() == board.solution.size(), "all pairs connected")
 	_check(board.coverage() == 1.0, "board fully covered")
 	_check(board.locked, "win detected")
@@ -118,7 +122,6 @@ func _run() -> void:
 	_check(found, "found a place to cross lines")
 	_check(board.paths[0].size() < len_before, "crossed line was cut")
 	_check(not board.completed[0], "cut line no longer complete")
-	_check(gs.critter.mood == Critter.Mood.SAD, "critter winces at the cut")
 
 	print("hints solve the level")
 	board.restart()

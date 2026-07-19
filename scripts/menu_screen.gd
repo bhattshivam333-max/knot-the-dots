@@ -100,6 +100,66 @@ func _ready() -> void:
 		main.show_daily())
 	row.add_child(daily)
 
+	if not Progress.daily_bonus_info().is_empty():
+		_show_daily_bonus.call_deferred()
+
+
+func _show_daily_bonus() -> void:
+	var bonus: Dictionary = Progress.daily_bonus_info()
+	if bonus.is_empty() or is_instance_valid(_overlay):
+		return
+	_overlay = Control.new()
+	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_overlay)
+
+	var dim := ColorRect.new()
+	dim.color = Color("#06040e", 0.75)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_overlay.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_overlay.add_child(center)
+
+	var panel := UI.overlay_panel()
+	panel.custom_minimum_size = Vector2(300, 0)
+	center.add_child(panel)
+
+	var box := VBoxContainer.new()
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", 16)
+	panel.add_child(box)
+
+	box.add_child(UI.heading("DAILY BONUS", 24, UI.GOLD_LIGHT, 1))
+	box.add_child(UI.label("Day %d streak" % int(bonus["streak"]), 14, UI.TEXT_DIM))
+
+	var coin_chip := UI.chip(18, Vector4(18, 10, 18, 10))
+	coin_chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var csb: StyleBoxFlat = coin_chip.get_theme_stylebox("panel").duplicate()
+	csb.bg_color = Color(UI.GOLD, 0.12)
+	csb.border_color = Color(UI.GOLD, 0.3)
+	coin_chip.add_theme_stylebox_override("panel", csb)
+	var cbox: HBoxContainer = coin_chip.get_child(0)
+	cbox.add_child(UI.CoinDot.new(11.0))
+	cbox.add_child(UI.label("+%d" % int(bonus["amount"]), 18, UI.GOLD_PALE, UI.fredoka(700)))
+	box.add_child(coin_chip)
+
+	if int(bonus["streak"]) > 1:
+		box.add_child(UI.label("Come back tomorrow for more!", 13, UI.TEXT_DIM))
+
+	var collect := UI.chunky_button("COLLECT", 17, "gold")
+	collect.custom_minimum_size = Vector2(244, 56)
+	collect.pressed.connect(func() -> void:
+		Progress.claim_daily_bonus()
+		_coin_chip.set_amount(Progress.coins())
+		Sfx.play("win")
+		_overlay.queue_free())
+	box.add_child(collect)
+
+	panel.scale = Vector2(0.8, 0.8)
+	create_tween().tween_property(panel, "scale", Vector2.ONE, 0.25) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
 
 ## Fredoka 700 title with the mockup's gold vertical gradient
 ## (#ffe89a -> #ffc233 55% -> #ff9d00) and 4px black drop shadow.

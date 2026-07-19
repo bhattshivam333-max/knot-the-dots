@@ -15,8 +15,6 @@ var time_limit := 45.0
 var time_left := 45.0
 var ended := false
 
-var critter: Critter
-
 var _coin_chip: UI.CoinChip
 var _timer_label: Label
 var _timer_chip: PanelContainer
@@ -71,24 +69,6 @@ func _ready() -> void:
 	board.state_changed.connect(_update_hint_state)
 	board.level_won.connect(_on_won)
 	box.add_child(board)
-
-	# Zone mascot below the board; it reacts to how you play.
-	var zone := _zone_idx()
-	critter = Critter.new(Zones.ZONES[zone]["critter"])
-	board.pair_connected.connect(critter.react_happy)
-	board.line_cut.connect(critter.react_sad)
-	var critter_row := HBoxContainer.new()
-	critter_row.add_theme_constant_override("separation", 10)
-	critter_row.add_child(critter)
-	var zone_tag := UI.label(str(Zones.ZONES[zone]["name"]).to_upper(), 11,
-			Color(UI.TEXT_DIM, 0.7), UI.fredoka(600, 2))
-	zone_tag.size_flags_vertical = Control.SIZE_SHRINK_END
-	var tag_pad := MarginContainer.new()
-	tag_pad.add_theme_constant_override("margin_bottom", 16)
-	tag_pad.add_child(zone_tag)
-	tag_pad.size_flags_vertical = Control.SIZE_SHRINK_END
-	critter_row.add_child(tag_pad)
-	box.add_child(critter_row)
 
 	# Bottom: UNDO | HINT, 150x58 each, gap 16.
 	var bottom := HBoxContainer.new()
@@ -177,7 +157,6 @@ func _update_timer_label() -> void:
 		_timer_chip.add_theme_stylebox_override("panel", sb)
 		_timer_label.add_theme_color_override("font_color",
 				Color("#ff8095") if low else UI.ICON_COL)
-		critter.set_worried(low)
 
 
 func _update_hint_state() -> void:
@@ -203,12 +182,6 @@ func _load_level() -> Dictionary:
 	if is_daily:
 		return Levels.daily_level(Time.get_datetime_dict_from_system())
 	return Levels.get_level(pack_idx, level_idx)
-
-
-func _zone_idx() -> int:
-	if is_daily:
-		return Zones.zone_for_daily(Time.get_datetime_dict_from_system())
-	return Zones.zone_of_level(pack_idx, level_idx, int(Levels.PACKS[pack_idx]["count"]))
 
 
 func _title_text() -> String:
@@ -277,7 +250,6 @@ func _restart() -> void:
 
 func _on_won() -> void:
 	ended = true
-	critter.celebrate()
 	var stars := _stars_for_time()
 	var coins_earned := 20 + stars * 10
 	Progress.add_coins(coins_earned)
@@ -350,7 +322,6 @@ func _on_time_up() -> void:
 		return
 	ended = true
 	board.frozen = true
-	critter.droop()
 	Sfx.play("lose")
 	var box := _make_overlay_panel(300, UI.GRAD_PANEL_LOSE, Vector4(26, 34, 26, 28))
 	box.add_child(UI.heading("TIME'S UP!", 26, Color("#ff8095"), 1))
